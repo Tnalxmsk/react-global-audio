@@ -37,7 +37,7 @@ export function Player() {
       </div>
 
       <input
-        type="range"
+        type='range'
         min={0}
         max={state.duration || 0}
         value={state.currentTime}
