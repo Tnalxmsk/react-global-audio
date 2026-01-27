@@ -8,11 +8,11 @@ Provide a clear, concise description of this PR.
 
 ## Changes
 
-- 
+-
 
 ## How To Test
 
-1. 
+1.
 
 ## Checklist
 

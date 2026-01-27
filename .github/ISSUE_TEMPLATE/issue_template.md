@@ -1,8 +1,8 @@
 ﻿---
 name: Task / Maintenance
 about: Track a task, refactor, chore, or internal improvement.
-title: "task: "
-labels: ["task"]
+title: 'task: '
+labels: ['task']
 assignees: []
 ---
 
@@ -16,8 +16,8 @@ What is in scope and what is out of scope?
 
 ## Tasks
 
-- [ ] 
-- [ ] 
+- [ ]
+- [ ]
 
 ## Acceptance Criteria
 
