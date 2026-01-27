@@ -29,7 +29,7 @@ export const useGlobalAudio = (options: UseGlobalAudioOptions = {}) => {
   const state = useSyncExternalStore(
     audioManager.subscribe,
     audioManager.getSnapshot,
-    audioManager.getSnapshot
+    audioManager.getSnapshot,
   );
 
   // 컨트롤은 공유/안정 참조이므로 메모로 불필요한 렌더링 방지
