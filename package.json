@@ -1,0 +1,40 @@
+{
+  "name": "react-global-audio",
+  "version": "1.0.0",
+  "description": "Route-safe global audio manager + hooks for React apps.",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format esm,cjs",
+    "dev": "tsup src/index.ts --dts --format esm,cjs --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tnalxmsk/react-global-audio.git"
+  },
+  "keywords": [
+    "react",
+    "audio",
+    "hooks",
+    "global-audio"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Tnalxmsk/react-global-audio/issues"
+  },
+  "homepage": "https://github.com/Tnalxmsk/react-global-audio#readme",
+  "peerDependencies": {
+    "react": "^18 || ^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.9",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
