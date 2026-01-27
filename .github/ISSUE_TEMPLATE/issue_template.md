@@ -1,11 +1,3 @@
-﻿---
-name: Task / Maintenance
-about: Track a task, refactor, chore, or internal improvement.
-title: "task: "
-labels: ["task"]
-assignees: []
----
-
 ## Goal
 
 What are we trying to achieve and why?
