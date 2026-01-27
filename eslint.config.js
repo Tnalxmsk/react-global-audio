@@ -1,5 +1,6 @@
 ﻿import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import prettier from 'eslint-config-prettier';
 
 export default [
   {
@@ -14,4 +15,5 @@ export default [
       // Add/override rules here as needed.
     },
   },
+  prettier,
 ];
