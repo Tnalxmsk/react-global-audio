@@ -8,8 +8,8 @@ What is in scope and what is out of scope?
 
 ## Tasks
 
-- [ ] 
-- [ ] 
+- [ ]
+- [ ]
 
 ## Acceptance Criteria
 

@@ -1,4 +1,4 @@
-﻿import { DEFAULT_AUDIO_STATE, DEFAULT_THROTTLE_MS } from './constants';
+﻿import { DEFAULT_AUDIO_STATE, DEFAULT_THROTTLE_MS, IS_BROWSER } from './constants';
 import { buildProgressKey, getStorage, loadProgressValue, saveProgressValue } from './storage';
 import type {
   AudioControls,
@@ -15,6 +15,16 @@ let audio: HTMLAudioElement | null = null;
 let state: AudioState = { ...DEFAULT_AUDIO_STATE };
 const listeners = new Set<(next: AudioState) => void>();
 const eventHandlers = new Set<AudioEventHandlers>();
+let audioHandlers: {
+  timeupdate: () => void;
+  loadedmetadata: () => void;
+  playing: () => void;
+  pause: () => void;
+  ended: () => void;
+  waiting: () => void;
+  canplay: () => void;
+  error: () => void;
+} | null = null;
 
 // 런타임 설정(`configure`로 덮어씀)
 let rememberProgress = true;
@@ -73,58 +83,63 @@ const loadProgress = (src: string) => {
 };
 
 // 단일 HTMLAudioElement를 지연 생성하고, DOM 이벤트를 스토어 업데이트로 연결
-const ensureAudio = () => {
+const ensureAudio = (): HTMLAudioElement | null => {
+  if (!IS_BROWSER) return null;
   if (audio) return audio;
 
   audio = new Audio();
 
-  audio.addEventListener('timeupdate', () => {
-    setState({ currentTime: audio?.currentTime ?? 0 });
-    saveProgress();
-    emitEvent('onTimeUpdate', audio?.currentTime ?? 0);
-  });
+  audioHandlers = {
+    timeupdate: () => {
+      setState({ currentTime: audio?.currentTime ?? 0 });
+      saveProgress();
+      emitEvent('onTimeUpdate', audio?.currentTime ?? 0);
+    },
+    loadedmetadata: () => {
+      if (!audio) return;
+      setState({ duration: audio.duration || 0, isReady: true });
+      emitEvent('onLoadedMetadata', audio.duration || 0);
+      // duration/메타데이터가 준비되면 보류된 seek를 적용한다.
+      if (pendingSeekTime !== null) {
+        audio.currentTime = Math.max(0, pendingSeekTime);
+        setState({ currentTime: audio.currentTime });
+        pendingSeekTime = null;
+      }
+    },
+    playing: () => {
+      setState({ isPlaying: true, isReady: true });
+      emitEvent('onPlay');
+    },
+    pause: () => {
+      setState({ isPlaying: false });
+      saveProgress(true);
+      emitEvent('onPause');
+    },
+    ended: () => {
+      setState({ isPlaying: false });
+      saveProgress(true);
+      emitEvent('onEnded');
+    },
+    waiting: () => {
+      emitEvent('onWaiting');
+    },
+    canplay: () => {
+      emitEvent('onCanPlay');
+    },
+    error: () => {
+      setState({ error: 'audio_error' });
+      emitEvent('onError', 'audio_error');
+    },
+  };
 
-  audio.addEventListener('loadedmetadata', () => {
-    if (!audio) return;
-    setState({ duration: audio.duration || 0, isReady: true });
-    emitEvent('onLoadedMetadata', audio.duration || 0);
-    // duration/메타데이터가 준비되면 보류된 seek를 적용한다.
-    if (pendingSeekTime !== null) {
-      audio.currentTime = Math.max(0, pendingSeekTime);
-      setState({ currentTime: audio.currentTime });
-      pendingSeekTime = null;
-    }
-  });
-
-  audio.addEventListener('playing', () => {
-    setState({ isPlaying: true, isReady: true });
-    emitEvent('onPlay');
-  });
-
-  audio.addEventListener('pause', () => {
-    setState({ isPlaying: false });
-    saveProgress(true);
-    emitEvent('onPause');
-  });
-
-  audio.addEventListener('ended', () => {
-    setState({ isPlaying: false });
-    saveProgress(true);
-    emitEvent('onEnded');
-  });
-
-  audio.addEventListener('waiting', () => {
-    emitEvent('onWaiting');
-  });
-
-  audio.addEventListener('canplay', () => {
-    emitEvent('onCanPlay');
-  });
-
-  audio.addEventListener('error', () => {
-    setState({ error: 'audio_error' });
-    emitEvent('onError', 'audio_error');
-  });
+  audio.addEventListener('timeupdate', audioHandlers.timeupdate);
+  audio.addEventListener('loadedmetadata', audioHandlers.loadedmetadata);
+  audio.addEventListener('playing', audioHandlers.playing);
+  audio.addEventListener('pause', audioHandlers.pause);
+  audio.addEventListener('ended', audioHandlers.ended);
+  audio.addEventListener('waiting', audioHandlers.waiting);
+  audio.addEventListener('canplay', audioHandlers.canplay);
+  audio.addEventListener('error', audioHandlers.error);
 
   return audio;
 };
@@ -135,6 +150,7 @@ const getAudio = () => ensureAudio();
 // src 변경을 중앙화해 여러 컴포넌트가 엘리먼트를 서로 덮어쓰지 않게 함
 const setSource = (src: string | null) => {
   const instance = ensureAudio();
+  if (!instance) return;
 
   if (!src) {
     instance.pause();
@@ -171,6 +187,7 @@ const setPendingSeek = (time: number | null) => {
 // 현재 소스를 재생하거나, 먼저 새 소스로 교체한 뒤 재생
 const play = async (src?: string) => {
   const instance = ensureAudio();
+  if (!instance) return;
   if (src) {
     setSource(src);
   }
@@ -183,11 +200,13 @@ const play = async (src?: string) => {
 
 const pause = () => {
   const instance = ensureAudio();
+  if (!instance) return;
   instance.pause();
 };
 
 const stop = () => {
   const instance = ensureAudio();
+  if (!instance) return;
   instance.pause();
   instance.currentTime = 0;
   setState({ currentTime: 0, isPlaying: false });
@@ -197,6 +216,7 @@ const stop = () => {
 // 메타데이터가 준비되기 전에도 안전하게 seek하기 위해 지연 적용 지원
 const seek = (time: number) => {
   const instance = ensureAudio();
+  if (!instance) return;
   const nextTime = Math.max(0, Math.min(state.duration || time, time));
   if (!state.duration) {
     pendingSeekTime = nextTime;
@@ -208,6 +228,7 @@ const seek = (time: number) => {
 
 const setVolume = (volume: number) => {
   const instance = ensureAudio();
+  if (!instance) return;
   const next = Math.max(0, Math.min(1, volume));
   instance.volume = next;
   setState({ volume: next });
@@ -215,9 +236,30 @@ const setVolume = (volume: number) => {
 
 const setPlaybackRate = (rate: number) => {
   const instance = ensureAudio();
+  if (!instance) return;
   const next = Math.max(0.5, Math.min(2, rate));
   instance.playbackRate = next;
   setState({ rate: next });
+};
+
+// 오디오 엘리먼트 및 이벤트 리스너를 정리
+const dispose = () => {
+  if (!audio || !audioHandlers) return;
+  audio.removeEventListener('timeupdate', audioHandlers.timeupdate);
+  audio.removeEventListener('loadedmetadata', audioHandlers.loadedmetadata);
+  audio.removeEventListener('playing', audioHandlers.playing);
+  audio.removeEventListener('pause', audioHandlers.pause);
+  audio.removeEventListener('ended', audioHandlers.ended);
+  audio.removeEventListener('waiting', audioHandlers.waiting);
+  audio.removeEventListener('canplay', audioHandlers.canplay);
+  audio.removeEventListener('error', audioHandlers.error);
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.load();
+  audioHandlers = null;
+  audio = null;
+  pendingSeekTime = null;
+  setState({ ...DEFAULT_AUDIO_STATE });
 };
 
 // `useSyncExternalStore`에서 사용하는 외부 스토어 구독 API
@@ -269,6 +311,7 @@ export const audioManager = {
   getAudio,
   getSnapshot,
   subscribe,
+  dispose,
   getControls,
   subscribeEvents,
 };
