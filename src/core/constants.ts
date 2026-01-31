@@ -13,3 +13,6 @@ export const DEFAULT_AUDIO_STATE: AudioState = {
 
 // 진행률 저장 쓰기 간격(ms). 너무 자주 저장하지 않도록 기본 throttling 값 지정
 export const DEFAULT_THROTTLE_MS = 2000;
+
+// SSR 환경 감지를 위한 플래그
+export const IS_BROWSER = typeof window !== 'undefined' && typeof window.document !== 'undefined';
