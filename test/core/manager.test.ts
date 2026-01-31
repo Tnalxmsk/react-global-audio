@@ -1,17 +1,23 @@
-import { renderHook, waitFor, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_AUDIO_STATE } from '../core/constants';
-import { audioManager } from '../core/manager';
-import { useGlobalAudio } from './useGlobalAudio';
+import { DEFAULT_AUDIO_STATE } from '../../src/core/constants';
+import { audioManager } from '../../src';
 
-afterEach(() => {
-  cleanup();
-});
+const getAudioOrThrow = () => {
+  const audio = audioManager.getAudio();
+  if (!audio) {
+    throw new Error('Audio is not available in this environment.');
+  }
+  return audio;
+};
 
 beforeEach(() => {
   audioManager.setSource(null);
   audioManager.configure({});
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  audioManager.dispose();
 });
 
 describe('audioManager', () => {
@@ -39,7 +45,7 @@ describe('audioManager', () => {
 
   it('applies pending seek after metadata is loaded', () => {
     // 메타데이터가 준비되기 전 seek 요청이 보류되었다가 반영되는지 검증
-    const audio = audioManager.getAudio();
+    const audio = getAudioOrThrow();
     Object.defineProperty(audio, 'duration', {
       configurable: true,
       value: 120,
@@ -54,14 +60,14 @@ describe('audioManager', () => {
 
   it('sets error state on audio error event', () => {
     // 에러 이벤트 발생 시 상태가 갱신되는지 검증
-    const audio = audioManager.getAudio();
+    const audio = getAudioOrThrow();
     audio.dispatchEvent(new Event('error'));
     expect(audioManager.getSnapshot().error).toBe('audio_error');
   });
 
   it('stop resets currentTime and isPlaying', () => {
     // stop이 재생 상태를 종료하고 시간을 0으로 되돌리는지 검증
-    const audio = audioManager.getAudio();
+    const audio = getAudioOrThrow();
     Object.defineProperty(audio, 'currentTime', {
       configurable: true,
       writable: true,
@@ -83,7 +89,7 @@ describe('audioManager', () => {
 
     const unsubscribe = audioManager.subscribeEvents({ onPlay, onPause, onTimeUpdate });
 
-    const audio = audioManager.getAudio();
+    const audio = getAudioOrThrow();
     audio.dispatchEvent(new Event('playing'));
     audio.dispatchEvent(new Event('pause'));
     audio.dispatchEvent(new Event('timeupdate'));
@@ -94,29 +100,15 @@ describe('audioManager', () => {
 
     unsubscribe();
   });
-});
 
-describe('useGlobalAudio', () => {
-  it('shares state across hook instances', async () => {
-    // 훅이 여러 번 사용되어도 동일한 전역 상태를 공유하는지 검증
-    const first = renderHook(() => useGlobalAudio({ src: 'https://example.com/a.mp3' }));
-    const second = renderHook(() => useGlobalAudio());
-
-    await waitFor(() => {
-      expect(first.result.current.state.src).toBe('https://example.com/a.mp3');
-    });
-
-    expect(second.result.current.state.src).toBe('https://example.com/a.mp3');
-  });
-
-  it('autoPlay triggers audio play', async () => {
-    // autoPlay 옵션이 재생 호출로 이어지는지 검증
-    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play');
-
-    renderHook(() => useGlobalAudio({ src: 'https://example.com/b.mp3', autoPlay: true }));
-
-    await waitFor(() => {
-      expect(playSpy).toHaveBeenCalled();
-    });
+  it('dispose removes audio instance and resets state', () => {
+    // dispose가 오디오 인스턴스를 해제하고 상태를 초기화하는지 검증
+    audioManager.setSource('https://example.com/c.mp3');
+    const audio = getAudioOrThrow();
+    expect(audio).not.toBeNull();
+    audioManager.dispose();
+    const nextAudio = getAudioOrThrow();
+    expect(nextAudio).not.toBe(audio);
+    expect(audioManager.getSnapshot()).toEqual(DEFAULT_AUDIO_STATE);
   });
 });
