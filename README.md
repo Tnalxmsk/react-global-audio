@@ -56,6 +56,14 @@ import { audioManager } from 'react-global-audio';
 audioManager.configure({ rememberProgress: true, storage: 'localStorage' });
 await audioManager.play('/audio/track.mp3');
 audioManager.pause();
+// 테스트/정리 시 전역 오디오 인스턴스를 해제
+audioManager.dispose();
+```
+
+Dispose the global audio instance (useful for tests or cleanup):
+
+```ts
+audioManager.dispose();
 ```
 
 Subscribe to state:
@@ -110,3 +118,4 @@ Available from the hook (`controls`) and `audioManager.getControls()`:
 - Progress is saved in whole seconds.
 - A single shared `HTMLAudioElement` instance is used.
 - Set `storage: false` to disable persistence.
+- In SSR, audio actions are no-ops and the snapshot stays at the default state.
