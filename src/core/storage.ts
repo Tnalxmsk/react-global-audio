@@ -1,7 +1,9 @@
-﻿import type { StorageMode } from './types';
+﻿import { IS_BROWSER } from './constants';
+import type { StorageMode } from './types';
 
 // 선택한 저장소 백엔드를 반환하고, 비활성화면 null을 반환
 export const getStorage = (mode: StorageMode) => {
+  if (!IS_BROWSER) return null;
   if (mode === 'localStorage') return localStorage;
   if (mode === 'sessionStorage') return sessionStorage;
   return null;
